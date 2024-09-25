@@ -31,7 +31,7 @@ namespace FoccoAPI.Services.NovaPasta
                 };
 
                 _context.Add(transaction);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
                 response.Data = transactionDto;
                 response.Message = "Criado com sucesso";
