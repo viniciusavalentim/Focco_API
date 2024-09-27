@@ -1,6 +1,8 @@
 ﻿using FoccoAPI.Database;
 using FoccoAPI.Dtos;
 using FoccoAPI.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 
 namespace FoccoAPI.Services.NovaPasta
@@ -23,11 +25,11 @@ namespace FoccoAPI.Services.NovaPasta
 
                 var transaction = new TransactionsModel
                 {
-                   Name = transactionDto.Name,
-                   Description = transactionDto.Description,
-                   CashFlow = transactionDto.CashFlow,
-                   Value = transactionDto.Value,    
-                   UserId = user.Id
+                    Name = transactionDto.Name,
+                    Description = transactionDto.Description,
+                    CashFlow = transactionDto.CashFlow,
+                    Value = transactionDto.Value,
+                    UserId = user.Id
                 };
 
                 _context.Add(transaction);
@@ -40,37 +42,147 @@ namespace FoccoAPI.Services.NovaPasta
             catch (Exception ex)
             {
                 response.Data = null;
-                response.Message = ex.Message;  
+                response.Message = ex.Message;
                 response.Status = false;
             }
 
             return response;
         }
 
-
-        public UserModel GetUserFromToken(string token)
+        public async Task<ResponseModel<UpdateTransactionDto>> UpdateTransaction(UpdateTransactionDto transactionDto, UserModel user)
         {
-            var handler = new JwtSecurityTokenHandler();
-            var jwtToken = handler.ReadJwtToken(token);
+            ResponseModel<UpdateTransactionDto> response = new ResponseModel<UpdateTransactionDto>();
 
-            var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "Id");
-            if (userIdClaim == null) return null;
-
-            int userId = int.Parse(userIdClaim.Value);
-
-            // Simular a recuperação de um usuário baseado no ID
-            var user = new UserModel
+            try
             {
-                Id = userId,
-                UserName = jwtToken.Claims.FirstOrDefault(c => c.Type == "User")?.Value,
-                Email = jwtToken.Claims.FirstOrDefault(c => c.Type == "Email")?.Value,
-                Cargo = jwtToken.Claims.FirstOrDefault(c => c.Type == "Cargo")?.Value
-            };
+                var existingTransaction = await _context.Transactions.AsNoTracking().FirstOrDefaultAsync(t => t.Id == transactionDto.Id && t.UserId == user.Id);
 
-            return user;
+                if (existingTransaction != null)
+                {
+
+                    existingTransaction.Name = transactionDto.Name;
+                    existingTransaction.Description = transactionDto.Description;
+                    existingTransaction.Value = transactionDto.Value;
+                    existingTransaction.CashFlow = transactionDto.CashFlow;
+
+                    _context.Transactions.Update(existingTransaction);
+                    await _context.SaveChangesAsync();
+
+                    response.Data = transactionDto;
+                    response.Message = "Editado com sucesso";
+                }
+                else
+                {
+                    response.Data = null;
+                    response.Message = "Trnsação não encontrada.";
+                    response.Status = false;
+
+                    return response;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                response.Data = null;
+                response.Message = ex.Message;
+                response.Status = false;
+            }
+
+            return response;
         }
 
+        public async Task<ResponseModel<List<TransactionsModel>>> GetAllTransactions(UserModel user)
+        {
+            ResponseModel<List<TransactionsModel>> response = new ResponseModel<List<TransactionsModel>>();
+
+            try
+            {
+                var AllTransactions = await _context.Transactions.Where(t => t.UserId == user.Id).ToListAsync();
+
+                if (AllTransactions == null)
+                {
+                    response.Data = [];
+                    response.Message = "Nenhum dado foi encontrado";
+                }
+                else
+                {
+                    response.Data = AllTransactions;
+                    response.Message = "Dados Encontrados com sucesso";
+                }
+            }
+            catch (Exception e)
+            {
+                response.Data = null;
+                response.Message = e.Message;
+                response.Status = false;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel<TransactionsModel>> GetTransactionsById(int id, UserModel user)
+        {
+            ResponseModel<TransactionsModel> response = new ResponseModel<TransactionsModel>();
+
+            try
+            {
+                var transaction = await _context.Transactions.FirstOrDefaultAsync(t => t.Id == id && t.UserId == user.Id);
 
 
+                if (transaction == null)
+                {
+                    response.Data = null;
+                    response.Message = "Transacão não encontrada";
+                }
+                else
+                {
+                    response.Data = transaction;
+                    response.Message = "Dados Encontrados com sucesso";
+                }
+            }
+            catch (Exception e)
+            {
+                response.Data = null;
+                response.Message = e.Message;
+                response.Status = false;
+            }
+
+
+            return response;
+        }
+        public async Task<ResponseModel<TransactionsModel>> DeleteTransaction(int id, UserModel user)
+        {
+            ResponseModel<TransactionsModel> response = new ResponseModel<TransactionsModel>();
+
+            try
+            {
+                var transaction = await _context.Transactions.FirstOrDefaultAsync(t => t.Id == id && t.UserId == user.Id);
+
+                if (transaction == null)
+                {
+                    response.Data = null;
+                    response.Message = "Transacão não encontrada";
+                }
+                else
+                {
+
+                    transaction.Status = 'X';
+
+                    await _context.SaveChangesAsync();   
+
+                    response.Data = transaction;
+                    response.Message = "Dados Encontrados com sucesso";
+                }
+            }
+            catch (Exception e)
+            {
+                response.Data = null;
+                response.Message = e.Message;
+                response.Status = false;
+            }
+
+
+            return response;
+        }
     }
 }
