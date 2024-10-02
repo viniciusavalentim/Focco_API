@@ -29,18 +29,19 @@ namespace FoccoAPI.Controllers
             {
                 var response = await _httpClient.PostAsJsonAsync("https://localhost:7020/api/Auth/login", login);
 
-                if (response.IsSuccessStatusCode)
-                {
-                    var authResponse = await response.Content.ReadFromJsonAsync<object>();
-                    
-                    return Ok(authResponse);
-                }
+                var authResponse = await response.Content.ReadFromJsonAsync<ResponseModel<string>>();
 
-                return Unauthorized("Falha na autenticação.");
+                if (authResponse != null && authResponse.Status == false)
+                {
+                    return BadRequest(authResponse);
+
+                }
+                return Ok(authResponse);
+
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ex);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Erro interno no servidor", detalhe = ex.Message });
             }
         }
 
@@ -59,7 +60,6 @@ namespace FoccoAPI.Controllers
                 if (response.IsSuccessStatusCode)
                 {
                     var authResponse = await response.Content.ReadFromJsonAsync<object>();
-
                     return Ok(authResponse);
                 }
                 else
