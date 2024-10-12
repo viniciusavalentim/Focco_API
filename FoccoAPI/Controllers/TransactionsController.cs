@@ -124,8 +124,8 @@ namespace FoccoAPI.Controllers
 
         }
 
-        [HttpGet("All")]
-        public async Task<ActionResult> GetAllTransactions()
+        [HttpGet("all/{currentDate}")]
+        public async Task<ActionResult> GetAllTransactions(DateTime currentDate)
         {
             if (User.Identity.IsAuthenticated)
             {
@@ -136,7 +136,7 @@ namespace FoccoAPI.Controllers
                     Id = int.Parse(userId),
                 };
 
-                var response = await _transactionsInterface.GetAllTransactions(user);
+                var response = await _transactionsInterface.GetAllTransactions(currentDate, user);
 
                 if (response.Status == false)
                 {
@@ -144,6 +144,80 @@ namespace FoccoAPI.Controllers
                 }
 
                 return Ok(response);
+
+            }
+
+            return Unauthorized();
+
+        }
+
+        [HttpGet("balance/{currentDate}")]
+        public async Task<ActionResult> GetCurrentBalance(DateTime currentDate)
+        {
+            if (User.Identity.IsAuthenticated)
+            {
+                var userId = User.FindFirst("Id")?.Value;
+
+                var user = new UserModel
+                {
+                    Id = int.Parse(userId),
+                };
+
+                var response = await _transactionsInterface.GetCurrentBalance(currentDate, user);
+
+                if (response.Status == false)
+                {
+                    return BadRequest(response);
+                }
+
+                return Ok(response);
+
+            }
+
+            return Unauthorized();
+
+        }
+
+        [HttpGet("cashflow/{id}/{currentDate}")]
+        public async Task<ActionResult> GetCashFlow(int id, DateTime currentDate)
+        {
+            if (User.Identity.IsAuthenticated)
+            {
+                var userId = User.FindFirst("Id")?.Value;
+
+                var user = new UserModel
+                {
+                    Id = int.Parse(userId),
+                };
+
+                var response = await _transactionsInterface.GetCashFlowById(id,currentDate, user);
+
+                if (response.Status == false)
+                {
+                    return BadRequest(response);
+                }
+
+                return Ok(response);
+
+            }
+
+            return Unauthorized();
+
+        }
+
+        [HttpGet("user")]
+        public async Task<ActionResult> GetUser()
+        {
+            if (User.Identity.IsAuthenticated)
+            {
+                var userId = User.FindFirst("User")?.Value;
+
+                if (userId == null)
+                {
+                    return BadRequest(userId);
+                }
+
+                return Ok(userId);
 
             }
 

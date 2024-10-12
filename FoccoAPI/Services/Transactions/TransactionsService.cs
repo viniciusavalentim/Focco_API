@@ -1,5 +1,6 @@
 ﻿using FoccoAPI.Database;
 using FoccoAPI.Dtos;
+using FoccoAPI.Enum;
 using FoccoAPI.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -91,13 +92,13 @@ namespace FoccoAPI.Services.NovaPasta
             return response;
         }
 
-        public async Task<ResponseModel<List<TransactionsModel>>> GetAllTransactions(UserModel user)
+        public async Task<ResponseModel<List<TransactionsModel>>> GetAllTransactions(DateTime currentDate,UserModel user)
         {
             ResponseModel<List<TransactionsModel>> response = new ResponseModel<List<TransactionsModel>>();
 
             try
             {
-                var AllTransactions = await _context.Transactions.Where(t => t.UserId == user.Id).ToListAsync();
+                var AllTransactions = await _context.Transactions.Where(t => t.UserId == user.Id && t.CreatedAt.Month == currentDate.Month && t.CreatedAt.Year == currentDate.Year).ToListAsync();
 
                 if (AllTransactions == null)
                 {
@@ -150,6 +151,7 @@ namespace FoccoAPI.Services.NovaPasta
 
             return response;
         }
+
         public async Task<ResponseModel<TransactionsModel>> DeleteTransaction(int id, UserModel user)
         {
             ResponseModel<TransactionsModel> response = new ResponseModel<TransactionsModel>();
@@ -168,7 +170,7 @@ namespace FoccoAPI.Services.NovaPasta
 
                     transaction.Status = 'X';
 
-                    await _context.SaveChangesAsync();   
+                    await _context.SaveChangesAsync();
 
                     response.Data = transaction;
                     response.Message = "Dados Encontrados com sucesso";
@@ -181,6 +183,101 @@ namespace FoccoAPI.Services.NovaPasta
                 response.Status = false;
             }
 
+
+            return response;
+        }
+
+        public async Task<ResponseModel<double>> GetCurrentBalance(DateTime currentDate,UserModel user)
+        {
+            ResponseModel<double> response = new ResponseModel<double>();
+
+            try
+            {
+                var AllTransactions = await _context.Transactions.Where(t => t.UserId == user.Id && t.CreatedAt.Month == currentDate.Month && t.CreatedAt.Year == currentDate.Year).ToListAsync();
+
+
+                double currentBalance = 0;
+
+
+                foreach (var transaction in AllTransactions)
+                {
+                    if (transaction.CashFlow == Enum.CashFlowEnum.Income)
+                    {
+                        currentBalance += transaction.Value;
+                    }
+                    else if (transaction.CashFlow == Enum.CashFlowEnum.Expense)
+                    {
+                        currentBalance -= transaction.Value;
+                    }
+                    else if (transaction.CashFlow == Enum.CashFlowEnum.Investment)
+                    {
+                        currentBalance -= transaction.Value;
+                    }
+                }
+
+                if (AllTransactions == null)
+                {
+                    response.Data = 0;
+                    response.Message = "Sem transações";
+                    response.Status = true;
+                    return response;
+                }
+
+
+                response.Data = currentBalance;
+                response.Message = "Current Balance Found";
+                return response;
+
+            }
+            catch (Exception e)
+            {
+                response.Data = 0;
+                response.Message = e.Message;
+                response.Status = false;
+            }
+
+
+            return response;
+        }
+
+        public async Task<ResponseModel<double>> GetCashFlowById(int id, DateTime currentDate,UserModel user)
+        {
+            ResponseModel<double> response = new ResponseModel<double>();
+
+            try
+            {
+                CashFlowEnum cashFlow = (CashFlowEnum)id;
+
+                var currentMonth = DateTime.Now.Month;
+                var currentYear = DateTime.Now.Year;
+
+                var AllTransactions = await _context.Transactions
+                                            .Where(t => t.UserId == user.Id && 
+                                                        t.CashFlow == cashFlow && 
+                                                        t.CreatedAt.Month == currentDate.Month && 
+                                                        t.CreatedAt.Year == currentDate.Year).ToListAsync();
+
+                double totalCashFlow = AllTransactions.Sum(t => t.Value);
+
+                if (AllTransactions == null)
+                {
+                    response.Data = 0;
+                    response.Message = "Sem transações";
+                    response.Status = true;
+                    return response;
+                }
+
+                response.Data = totalCashFlow;
+                response.Message = "Current Balance Found";
+                return response;
+
+            }
+            catch (Exception e)
+            {
+                response.Data = 0;
+                response.Message = e.Message;
+                response.Status = false;
+            }
 
             return response;
         }
